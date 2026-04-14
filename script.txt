@@ -1,0 +1,1 @@
+This is a sample target text file for local voice cloning tests. Replace this text with your own script when you want to generate a different audio output.

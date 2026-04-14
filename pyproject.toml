@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zero-shot-voiceclone"
+version = "0.1.0"
+description = "Command-line zero-shot voice cloning with pluggable model backends."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "audioread>=3.0",
+  "numpy>=1.26",
+  "qwen-tts",
+  "soundfile>=0.12",
+]
+
+[project.optional-dependencies]
+xtts = [
+  "coqui-tts[codec]>=0.27.5",
+]
+all = [
+  "coqui-tts[codec]>=0.27.5",
+]
+
+[project.scripts]
+voiceclone = "zero_shot_voiceclone.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
