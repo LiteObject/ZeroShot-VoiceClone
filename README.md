@@ -60,6 +60,18 @@ XTTS-v2 clone mode with an explicit language code:
 voiceclone synth --backend xtts --reference-audio sample.wav --target-text-file script.txt --output out.wav --language en --confirm-rights-to-voice
 ```
 
+For the best Qwen cloning results, use a short trimmed mono WAV plus a transcript file that matches the spoken reference clip exactly. For example, if your trimmed clip says this sentence:
+
+```text
+On a bright autumn morning, I walked past the quiet market and watched the pale blue sky above the town.
+```
+
+save that exact line into `reference-qwen.txt`, then run:
+
+```bash
+voiceclone synth --backend qwen --model "Qwen/Qwen3-TTS-12Hz-1.7B-Base" --reference-audio reference.trimmed.wav --reference-text-file reference-qwen.txt --target-text-file script.txt --output out-qwen.wav --language Auto --confirm-rights-to-voice
+```
+
 Shared flags cover the reference audio, target text file, output path, model, language, chunking, metadata, and consent acknowledgement. Backend-specific flags are now prefixed, for example `--qwen-device` or `--xtts-split-sentences`.
 
 The repository includes [script.txt](script.txt) as a sample target text file for smoke tests. The `sample.wav` and `sample.txt` names in the examples are placeholders and should be replaced with your own reference audio and transcript.
@@ -69,6 +81,7 @@ The CLI defaults to `--backend qwen`.
 ## Notes
 
 - Reference audio is best kept short and clean. The CLI warns when it falls outside the recommended 3 to 10 second range and allows longer clips, though a shorter excerpt is usually better.
+- Qwen quality improves substantially when the reference clip is a single clean 5 to 8 second speech segment in mono WAV format and the transcript matches the clip word for word.
 - Long target documents are split into sentence-sized chunks and stitched back together with a configurable silence gap.
 - XTTS-v2 expects an explicit language code such as `en`, `es`, or `zh-cn`; it does not support `Auto`.
 - On first XTTS-v2 model download, Coqui prompts for CPML/commercial-license acknowledgement. If you have already reviewed and accepted those terms, you can avoid the interactive prompt by setting `COQUI_TOS_AGREED=1` in the shell that launches the CLI.
