@@ -187,7 +187,7 @@ class XTTSVoiceCloneBackend(VoiceCloneBackend):
             return audio_tensor
 
         xtts_module.load_audio = load_audio
-        xtts_module._zero_shot_voiceclone_loader_patched = True
+        setattr(xtts_module, "_zero_shot_voiceclone_loader_patched", True)
 
     def _read_audio_array(self, path: Path) -> tuple[Any, int]:
         try:
@@ -223,7 +223,7 @@ class XTTSVoiceCloneBackend(VoiceCloneBackend):
                     audio_array, sample_rate = librosa.load(
                         str(path), sr=None, mono=False
                     )
-                except Exception:
+                except (OSError, RuntimeError, ValueError):
                     audio_array = None
                 else:
                     return self._normalize_audio_array(audio_array, np), int(
