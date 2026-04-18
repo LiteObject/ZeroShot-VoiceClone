@@ -108,7 +108,13 @@ class QwenVoiceCloneBackend(VoiceCloneBackend):
             self._device == "auto" and torch.cuda.is_available()
         )
         if uses_cuda and dtype in {torch.float16, torch.bfloat16}:
-            return "flash_attention_2"
+            try:
+                import importlib.util
+
+                if importlib.util.find_spec("flash_attn") is not None:
+                    return "flash_attention_2"
+            except (ImportError, ModuleNotFoundError):
+                pass
         return None
 
     @property
