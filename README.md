@@ -36,7 +36,33 @@ pip install -e .[xtts]
 
 That extra now includes Coqui's `codec` support, which recent XTTS builds need for audio I/O.
 
+### GPU acceleration (recommended)
+
+The default `pip install` pulls in CPU-only PyTorch. For practical inference speeds on an NVIDIA GPU, reinstall PyTorch, torchaudio, and torchvision from the CUDA index **after** the main install. The versions must all match:
+
+```bash
+pip install torch==2.6.0+cu124 torchaudio==2.6.0+cu124 torchvision==0.21.0+cu124 --index-url https://download.pytorch.org/whl/cu124
+```
+
+Verify CUDA is available:
+
+```bash
+python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
+```
+
+Both backends auto-detect CUDA when `--device auto` (the default) is used. You can also pass `--device cuda` explicitly.
+
 If you want the recommended FlashAttention path on compatible NVIDIA hardware, install it separately in that environment for Qwen.
+
+### SoX (Windows only)
+
+The `qwen-tts` runtime uses SoX for audio resampling. On Windows, install it via:
+
+```powershell
+winget install sox
+```
+
+Restart your shell after installing so the `sox` command is on your PATH.
 
 ## Usage
 
