@@ -78,6 +78,16 @@ Alternatively, install the optional bundled-binary fallback, which the script de
 pip install -e .[extract]
 ```
 
+### faster-whisper (for transcribing reference clips)
+
+[scripts/transcribe_audio.py](scripts/transcribe_audio.py) turns a reference clip into the exact transcript file the Qwen backend needs. It uses faster-whisper, which is an optional dependency:
+
+```bash
+pip install -e .[transcribe]
+```
+
+On first use the script downloads the selected model (~3 GB for the default `large-v3`) into the Hugging Face cache. When PyTorch is installed with CUDA support, the script reuses its bundled CUDA libraries, so GPU transcription works without installing a separate CUDA toolkit.
+
 ## Extracting a reference clip from a video
 
 `scripts/extract_audio.py` decodes an MP4 (or any media file FFmpeg can read) to a mono PCM WAV in a single decode pass, so the audio is never pushed through a second lossy stage:
@@ -95,6 +105,24 @@ The script keeps the source sample rate by default, downmixes to mono, applies s
 - `--force` overwrites an existing output file.
 
 Use the extracted WAV as `--reference-audio`. Trim the exact sentence you want to clone and save its transcript to a text file for `--reference-text-file`.
+
+## Transcribing a reference clip
+
+`scripts/transcribe_audio.py` produces the `--reference-text-file` content for the best-quality Qwen clone mode. It accepts audio or video containers, so you can transcribe the MP4 directly or, better, the exact clip you already extracted:
+
+```bash
+python scripts/transcribe_audio.py reference.trimmed.wav --language en
+```
+
+The transcript is written to `<input stem>.txt` and printed. Useful flags:
+
+- `--model large-v3` selects the faster-whisper model (`tiny.en`, `base`, `small`, `medium`, `large-v3`, `large-v3-turbo`, or a local path). The default is `large-v3`.
+- `--language en` sets the spoken language explicitly; the default auto-detects.
+- `--show-segments` prints sentence timestamps, handy for choosing the `--start` and `--duration` values for `extract_audio.py`.
+- `--device cuda` and `--compute-type float16` control where and how the model runs. `auto`, the default, tries CUDA first and falls back to CPU with a note.
+- `--no-vad` disables voice-activity detection, which is on by default to avoid hallucinated text on silence.
+
+For the best clone quality, extract the clip first and then transcribe that exact clip, so transcript and audio match word for word. Verify unusual words, names, and numbers by ear before cloning.
 
 ## Usage
 
@@ -150,6 +178,7 @@ The CLI defaults to `--backend qwen`.
 ```text
 docs/mvp-plan.md                Implementation plan
 scripts/extract_audio.py        Reference-clip extractor for video files
+scripts/transcribe_audio.py     Reference-clip transcriber (faster-whisper)
 src/zero_shot_voiceclone/backends/
 src/zero_shot_voiceclone/       CLI package
 tests/                          Lightweight unit tests
