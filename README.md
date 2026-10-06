@@ -64,6 +64,38 @@ winget install sox
 
 Restart your shell after installing so the `sox` command is on your PATH.
 
+### FFmpeg (for extracting reference clips from video)
+
+[scripts/extract_audio.py](scripts/extract_audio.py) shells out to FFmpeg when you want to pull a reference clip out of an MP4 or another media file. Install FFmpeg and make sure `ffmpeg` is on PATH:
+
+```powershell
+winget install Gyan.FFmpeg
+```
+
+Alternatively, install the optional bundled-binary fallback, which the script detects automatically:
+
+```bash
+pip install -e .[extract]
+```
+
+## Extracting a reference clip from a video
+
+`scripts/extract_audio.py` decodes an MP4 (or any media file FFmpeg can read) to a mono PCM WAV in a single decode pass, so the audio is never pushed through a second lossy stage:
+
+```bash
+python scripts/extract_audio.py interview.mp4 --start 12 --duration 8
+```
+
+The script keeps the source sample rate by default, downmixes to mono, applies single-pass loudness normalization to -16 LUFS, and prints a quality report with warnings when the clip falls outside the recommended 3 to 10 second reference range. Useful flags:
+
+- `--sample-rate 16000` forces a specific rate; nothing is upsampled unless you ask.
+- `--no-normalize` keeps the source loudness.
+- `--list-streams` and `--stream-index 1` inspect and pick one of several audio tracks in a multi-language MP4.
+- `--copy -o audio.m4a` copies the compressed stream without re-encoding, for archival.
+- `--force` overwrites an existing output file.
+
+Use the extracted WAV as `--reference-audio`. Trim the exact sentence you want to clone and save its transcript to a text file for `--reference-text-file`.
+
 ## Usage
 
 Examples below are shown as single-line commands so they work directly in PowerShell and Bash.
@@ -117,6 +149,7 @@ The CLI defaults to `--backend qwen`.
 
 ```text
 docs/mvp-plan.md                Implementation plan
+scripts/extract_audio.py        Reference-clip extractor for video files
 src/zero_shot_voiceclone/backends/
 src/zero_shot_voiceclone/       CLI package
 tests/                          Lightweight unit tests

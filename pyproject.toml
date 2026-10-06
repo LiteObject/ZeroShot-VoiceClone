@@ -19,8 +19,12 @@ dependencies = [
 xtts = [
   "coqui-tts[codec]>=0.27.5",
 ]
+extract = [
+  "imageio-ffmpeg>=0.5",
+]
 all = [
   "coqui-tts[codec]>=0.27.5",
+  "imageio-ffmpeg>=0.5",
 ]
 
 [project.scripts]

@@ -208,7 +208,24 @@ __marimo__/
 
 # ZeroShot-VoiceClone local artifacts
 dummy.txt
-out.wav
-out.wav.json
 outputs/
-my_voice_sample.wav
+
+# Generated audio output (reference clips, synth results, extracted streams)
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.mka
+*.aac
+*.ogg
+*.oga
+*.opus
+*.wma
+*.aif
+*.aiff
+
+# JSON sidecars written next to generated audio
+*.wav.json
+*.mp3.json
+*.flac.json
+*.ogg.json
