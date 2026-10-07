@@ -209,6 +209,7 @@ __marimo__/
 # ZeroShot-VoiceClone local artifacts
 dummy.txt
 outputs/
+samples/
 
 # Generated audio output (reference clips, synth results, extracted streams)
 *.wav
