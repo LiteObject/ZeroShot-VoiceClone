@@ -137,6 +137,12 @@ def build_parser() -> argparse.ArgumentParser:
         help=argparse.SUPPRESS,
     )
     qwen_group.add_argument(
+        "--qwen-max-new-tokens",
+        type=int,
+        default=2048,
+        help="Qwen backend option: maximum generated codec tokens per chunk (default: %(default)s).",
+    )
+    qwen_group.add_argument(
         "--qwen-x-vector-only",
         dest="qwen_x_vector_only",
         action="store_true",
@@ -257,6 +263,7 @@ def build_backend_options(args: argparse.Namespace) -> dict[str, object]:
             "device": args.qwen_device,
             "dtype": args.qwen_dtype,
             "attn_implementation": args.qwen_attn_implementation,
+            "max_new_tokens": args.qwen_max_new_tokens,
             "x_vector_only_mode": args.qwen_x_vector_only,
         }
 

@@ -14,10 +14,12 @@ if str(SRC_ROOT) not in sys.path:
 backends_module = importlib.import_module("zero_shot_voiceclone.backends")
 domain_module = importlib.import_module("zero_shot_voiceclone.domain")
 numpy = importlib.import_module("numpy")
+qwen_module = importlib.import_module("zero_shot_voiceclone.backends.qwen")
 xtts_module = importlib.import_module("zero_shot_voiceclone.backends.xtts")
 
 GenerationSettings = domain_module.GenerationSettings
 CLIError = domain_module.CLIError
+QwenVoiceCloneBackend = qwen_module.QwenVoiceCloneBackend
 XTTSVoiceCloneBackend = xtts_module.XTTSVoiceCloneBackend
 get_backend_names = backends_module.get_backend_names
 
@@ -25,6 +27,54 @@ get_backend_names = backends_module.get_backend_names
 class BackendRegistryTest(unittest.TestCase):
     def test_registry_lists_xtts_backend(self) -> None:
         self.assertIn("xtts", get_backend_names())
+
+
+class QwenBackendTest(unittest.TestCase):
+    def setUp(self) -> None:
+        self.backend = QwenVoiceCloneBackend(
+            GenerationSettings(
+                backend_name="qwen",
+                model_name="Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+                language="English",
+                chunk_max_chars=240,
+                silence_ms=250,
+                backend_options={},
+            )
+        )
+
+    def test_qwen_limits_generation_by_default(self) -> None:
+        prepared_reference = object()
+        with patch.object(self.backend, "_load_model") as load_model:
+            model = load_model.return_value
+            model.generate_voice_clone.return_value = ([[0.1, -0.1]], 24000)
+            waveform, sample_rate = self.backend.synthesize_chunk(
+                "Hello world.", prepared_reference
+            )
+
+        model.generate_voice_clone.assert_called_once_with(
+            text="Hello world.",
+            language="English",
+            voice_clone_prompt=prepared_reference,
+            max_new_tokens=2048,
+        )
+        self.assertEqual(waveform, [0.1, -0.1])
+        self.assertEqual(sample_rate, 24000)
+
+    def test_qwen_forwards_custom_generation_limit(self) -> None:
+        self.backend.settings.backend_options["max_new_tokens"] = 512
+        with patch.object(self.backend, "_load_model") as load_model:
+            model = load_model.return_value
+            model.generate_voice_clone.return_value = ([[0.1]], 24000)
+            self.backend.synthesize_chunk("Hello world.", object())
+
+        self.assertEqual(model.generate_voice_clone.call_args.kwargs["max_new_tokens"], 512)
+
+    def test_qwen_rejects_nonpositive_generation_limit(self) -> None:
+        for limit in (0, -1):
+            with self.subTest(limit=limit):
+                self.backend.settings.backend_options["max_new_tokens"] = limit
+                with self.assertRaisesRegex(CLIError, "must be greater than zero"):
+                    self.backend.validate_inputs("Reference speech.")
 
 
 class XTTSBackendTest(unittest.TestCase):

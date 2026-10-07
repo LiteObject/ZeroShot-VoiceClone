@@ -20,49 +20,78 @@ This is an MVP scaffold. It is designed to be a clean starting point, not a prod
 
 ## Install
 
-Qwen recommends using a fresh Python 3.12 environment for runtime. The project itself is packaged as a standard Python CLI:
+Qwen recommends using a fresh Python 3.12 environment for runtime. The following setup commands are for Windows PowerShell, run from the project root. Check that `python --version` reports your intended Python version before creating the environment:
 
-```bash
+```powershell
 python -m venv .venv
-.venv\Scripts\activate
-pip install -e .
+.\.venv\Scripts\python.exe -m pip install --use-feature=truststore -e .
 ```
+
+These setup commands target `.venv` explicitly and do not require activation. For the later `python` and `voiceclone` examples, activate it with `.\.venv\Scripts\Activate.ps1`. If activation is blocked by your PowerShell execution policy, use `.\.venv\Scripts\python.exe` instead of `python`, and `.\.venv\Scripts\python.exe -m zero_shot_voiceclone` instead of `voiceclone`.
+
+### Setup checklist
+
+| Component | When you need it | Installation |
+| --- | --- | --- |
+| Qwen and Python audio dependencies | Qwen synthesis | Main install above |
+| CUDA-enabled PyTorch and torchaudio | NVIDIA GPU acceleration | Matching wheels below; CPU inference also works |
+| Native SoX executable | Qwen audio-processing paths that call SoX | Separate Windows install below; pip installs only the wrapper |
+| FFmpeg | Extracting reference clips from video | System FFmpeg or the `extract` extra |
+| faster-whisper | Generating a reference transcript | The `transcribe` extra |
+| `truststore` | Model downloads that fail with SSL certificate errors | Certificate troubleshooting below |
+| `flash-attn` | Optional inference optimization | Not required to start synthesis |
+
+Install the main package and any optional extras first, then install the CUDA wheels if you need GPU acceleration. Resolve SoX/PATH and certificate issues as described below before starting a long synthesis run.
 
 If you want the XTTS-v2 backend as well, install the optional dependency set:
 
-```bash
-pip install -e .[xtts]
+```powershell
+.\.venv\Scripts\python.exe -m pip install --use-feature=truststore -e ".[xtts]"
 ```
 
 That extra now includes Coqui's `codec` support, which recent XTTS builds need for audio I/O.
 
 ### GPU acceleration (recommended)
 
-The default `pip install` pulls in CPU-only PyTorch. For practical inference speeds on an NVIDIA GPU, reinstall PyTorch, torchaudio, and torchvision from the CUDA index **after** the main install. The versions must all match:
+The project may initially install CPU-only PyTorch. For NVIDIA GPU inference, install matching CUDA-enabled PyTorch and torchaudio wheels **after** the main install and any optional extras. Run this from the project root in PowerShell to target the project's `.venv` explicitly:
 
-```bash
-pip install torch==2.6.0+cu124 torchaudio==2.6.0+cu124 torchvision==0.21.0+cu124 --index-url https://download.pytorch.org/whl/cu124
+```powershell
+.\.venv\Scripts\python.exe -m pip install --use-feature=truststore --index-url https://download.pytorch.org/whl/cu128 torch==2.11.0+cu128 torchaudio==2.11.0+cu128
 ```
+
+This CUDA 12.8 setup was verified on an NVIDIA RTX PRO 3000 Blackwell Generation Laptop GPU. It requires a compatible NVIDIA driver. The wheels bundle cuBLAS and cuDNN, including `cublas64_12.dll` and `cudnn64_9.dll`, so a separate CUDA Toolkit or standalone DLL download is not needed. `torchvision` is not required for this setup.
+
+The pip truststore option uses system certificate trust and keeps HTTPS verification enabled, including on networks where Python's certificate bundle causes download errors.
 
 Verify CUDA is available:
 
-```bash
-python -c "import torch; print(torch.cuda.is_available(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'N/A')"
+```powershell
+.\.venv\Scripts\python.exe -c "import torch; print(torch.__version__, torch.version.cuda, torch.cuda.is_available())"
 ```
+
+Expected output: `2.11.0+cu128 12.8 True`. If it reports `+cpu`, `None`, or `False`, check that you are using the project venv and that the NVIDIA driver supports CUDA 12.8.
 
 Both backends auto-detect CUDA when `--device auto` (the default) is used. You can also pass `--device cuda` explicitly.
 
-If you want the recommended FlashAttention path on compatible NVIDIA hardware, install it separately in that environment for Qwen.
+FlashAttention is optional. The startup message `Warning: flash-attn is not installed. Will only run the manual PyTorch version.` does not prevent synthesis or mean CUDA is unavailable. Start with the PyTorch fallback; only install FlashAttention separately if you have a compatible build for your Windows, Python, PyTorch, CUDA, and GPU combination.
 
-### SoX (Windows only)
+### SoX (for Qwen audio processing)
 
-The `qwen-tts` runtime uses SoX for audio resampling. On Windows, install it via:
+The Python `sox` package is a wrapper, not the native `sox.exe` program. Qwen imports the wrapper at startup, which checks whether the executable is on PATH and prints `SoX could not be found!` when it is missing. Installing the Python package again will not fix a missing executable.
+
+The default 12Hz Qwen models use `librosa` for reference resampling, so this import-time warning alone does not mean synthesis failed. Other Qwen audio-processing paths invoke SoX and need the native program. For full runtime support on Windows, install it via:
 
 ```powershell
 winget install sox
 ```
 
-Restart your shell after installing so the `sox` command is on your PATH.
+Ensure the directory containing `sox.exe` is on your user PATH, then open a new shell. Restart VS Code as well if its integrated terminals still inherit the old PATH. Verify the native command is available:
+
+```powershell
+sox --version
+```
+
+If it still reports `'sox' is not recognized`, add the installation directory to PATH, not the path to `sox.exe` itself, and restart the shell again.
 
 ### FFmpeg (for extracting reference clips from video)
 
@@ -74,19 +103,30 @@ winget install Gyan.FFmpeg
 
 Alternatively, install the optional bundled-binary fallback, which the script detects automatically:
 
-```bash
-pip install -e .[extract]
+```powershell
+.\.venv\Scripts\python.exe -m pip install --use-feature=truststore -e ".[extract]"
 ```
 
 ### faster-whisper (for transcribing reference clips)
 
 [scripts/transcribe_audio.py](scripts/transcribe_audio.py) turns a reference clip into the exact transcript file the Qwen backend needs. It uses faster-whisper, which is an optional dependency:
 
-```bash
-pip install -e .[transcribe]
+```powershell
+.\.venv\Scripts\python.exe -m pip install --use-feature=truststore -e ".[transcribe]"
 ```
 
 On first use the script downloads the selected model (~3 GB for the default `large-v3`) into the Hugging Face cache. When PyTorch is installed with CUDA support, the script reuses its bundled CUDA libraries, so GPU transcription works without installing a separate CUDA toolkit.
+
+### Verify the Python setup
+
+Run these checks without downloading a model or starting synthesis:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m zero_shot_voiceclone --help
+```
+
+Expect `No broken requirements found.` and the CLI help output. These checks verify package consistency and the CLI entry point, not model loading or audio generation. Use the CUDA and SoX checks above to verify those separately. The first synthesis run may still need to download model weights; certificate troubleshooting below applies to both Qwen and faster-whisper downloads.
 
 ## Extracting a reference clip from a video
 
@@ -121,6 +161,34 @@ The transcript is written to `<input stem>.txt` and printed. Useful flags:
 - `--show-segments` prints sentence timestamps, handy for choosing the `--start` and `--duration` values for `extract_audio.py`.
 - `--device cuda` and `--compute-type float16` control where and how the model runs. `auto`, the default, tries CUDA first and falls back to CPU with a note.
 - `--no-vad` disables voice-activity detection, which is on by default to avoid hallucinated text on silence.
+
+### Windows SSL certificate errors during model downloads
+
+If a Hugging Face model download fails with `SSLCertVerificationError`, install `truststore` in the same Python environment used to run the project. The pip truststore option also helps if pip itself has a certificate-bundle problem:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --use-feature=truststore truststore
+```
+
+Inject the Windows certificate store before starting the transcriber (replace the example audio path as needed):
+
+```powershell
+.\.venv\Scripts\python.exe -c "import runpy, sys, truststore; truststore.inject_into_ssl(); sys.argv = ['scripts/transcribe_audio.py', r'reference.trimmed.wav']; runpy.run_path(sys.argv[0], run_name='__main__')"
+```
+
+For a Qwen model download during synthesis, inject `truststore` before importing the CLI:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import sys, truststore; truststore.inject_into_ssl(); from zero_shot_voiceclone.cli import main; sys.argv = ['voiceclone', 'synth', '--backend', 'qwen', '--reference-audio', 'sample.wav', '--reference-text-file', 'sample.txt', '--target-text-file', 'script.txt', '--output', 'out.wav', '--confirm-rights-to-voice']; raise SystemExit(main())"
+```
+
+These commands keep HTTPS certificate verification enabled and use certificates trusted by Windows. If the error persists, the certificate authority may not be trusted by Windows; try a network that provides a valid public certificate chain. Do not disable SSL verification. Setting `HF_HUB_DISABLE_XET=1` alone does not fix certificate validation.
+
+If transcription fails with `open() got an unexpected keyword argument 'metadata_errors'`, an existing environment may have PyAV 19, which is incompatible with the argument used by faster-whisper. The `transcribe` extra constrains PyAV to a compatible version; refresh an existing environment with:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install --use-feature=truststore -e ".[transcribe]"
+```
 
 For the best clone quality, extract the clip first and then transcribe that exact clip, so transcript and audio match word for word. Verify unusual words, names, and numbers by ear before cloning.
 
@@ -164,9 +232,25 @@ The repository includes [script.txt](script.txt) as a sample target text file fo
 
 The CLI defaults to `--backend qwen`.
 
+### Qwen performance controls
+
+Qwen generation is limited to 2,048 new codec tokens per chunk by default, rather than inheriting the model's potentially much larger limit (8,192 in the default 0.6B model). This bounds excessively long generation for short text; it does not make normally terminating generation intrinsically faster.
+
+Use `--qwen-max-new-tokens` to override the positive per-chunk limit. A lower limit can cut off speech, especially with long chunks or slow delivery, so increase it if output is truncated. Use `--qwen-max-new-tokens 8192` to restore the downloaded model's previous ceiling when needed. The chosen limit is recorded in the output metadata.
+
+Larger text chunks reduce repeated generation calls, though each call may take longer and use more memory. For the bundled script, `--chunk-max-chars 360` produces 14 chunks instead of 22 and avoids the isolated one-word chunk produced at 240 characters. The shared default remains 240 characters.
+
+An English synthesis command using the shortened local reference and a 1,024-token ceiling is:
+
+```powershell
+.\.venv\Scripts\python.exe -c "import truststore; truststore.inject_into_ssl(); from zero_shot_voiceclone.cli import main; raise SystemExit(main())" synth --backend qwen --qwen-device cuda:0 --language English --reference-audio ".\sample_voice\Mohideen.short.wav" --reference-text-file ".\sample_voice\Mohideen.short.txt" --target-text-file ".\script.txt" --chunk-max-chars 360 --qwen-max-new-tokens 1024 --output ".\out-mohideen.wav" --confirm-rights-to-voice
+```
+
+Code changes and new flags require a fresh CLI invocation; a running Python process does not automatically reload them.
+
 ## Notes
 
-- Reference audio is best kept short and clean. The CLI warns when it falls outside the recommended 3 to 10 second range and allows longer clips, though a shorter excerpt is usually better.
+- Reference audio is best kept short and clean. The CLI warns when it falls outside the recommended 3 to 10 second range, including when it exceeds 30 seconds, but does not truncate it. Trim a clean speech excerpt yourself and keep the transcript matched to that exact excerpt.
 - Qwen quality improves substantially when the reference clip is a single clean 5 to 8 second speech segment in mono WAV format and the transcript matches the clip word for word.
 - Long target documents are split into sentence-sized chunks and stitched back together with a configurable silence gap.
 - XTTS-v2 expects an explicit language code such as `en`, `es`, or `zh-cn`; it does not support `Auto`.

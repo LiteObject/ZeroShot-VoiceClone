@@ -38,8 +38,31 @@ class CliParserTest(unittest.TestCase):
         self.assertEqual(args.language, "Auto")
         self.assertEqual(args.chunk_max_chars, 240)
         self.assertEqual(args.silence_ms, 250)
+        self.assertEqual(args.qwen_max_new_tokens, 2048)
+        self.assertEqual(build_backend_options(args)["max_new_tokens"], 2048)
         self.assertFalse(args.qwen_x_vector_only)
         self.assertTrue(args.confirm_rights_to_voice)
+
+    def test_qwen_generation_limit_is_forwarded(self) -> None:
+        parser = build_parser()
+        args = parser.parse_args(
+            [
+                "synth",
+                "--reference-audio",
+                "sample.wav",
+                "--reference-text-file",
+                "sample.txt",
+                "--target-text-file",
+                "script.txt",
+                "--output",
+                "out.wav",
+                "--qwen-max-new-tokens",
+                "512",
+                "--confirm-rights-to-voice",
+            ]
+        )
+        self.assertEqual(args.qwen_max_new_tokens, 512)
+        self.assertEqual(build_backend_options(args)["max_new_tokens"], 512)
 
     def test_xtts_specific_flags_are_parsed(self) -> None:
         parser = build_parser()

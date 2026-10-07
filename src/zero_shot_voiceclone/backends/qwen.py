@@ -25,6 +25,8 @@ class QwenVoiceCloneBackend(VoiceCloneBackend):
             raise CLIError(
                 "The qwen backend requires --reference-text-file unless --x-vector-only is enabled."
             )
+        if self._max_new_tokens <= 0:
+            raise CLIError("--qwen-max-new-tokens must be greater than zero.")
 
     def prepare_reference(
         self, reference_audio: Path, reference_transcript: str | None
@@ -43,6 +45,7 @@ class QwenVoiceCloneBackend(VoiceCloneBackend):
             text=text,
             language=self.settings.language,
             voice_clone_prompt=prepared_reference,
+            max_new_tokens=self._max_new_tokens,
         )
         if not wavs:
             raise CLIError("Model returned no audio for the requested chunk.")
@@ -128,6 +131,10 @@ class QwenVoiceCloneBackend(VoiceCloneBackend):
     @property
     def _attn_implementation(self) -> str:
         return str(self.settings.backend_options.get("attn_implementation", "auto"))
+
+    @property
+    def _max_new_tokens(self) -> int:
+        return int(self.settings.backend_options.get("max_new_tokens", 2048))
 
     @property
     def _x_vector_only_mode(self) -> bool:
